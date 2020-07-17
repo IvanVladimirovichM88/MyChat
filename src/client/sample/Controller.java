@@ -1,13 +1,13 @@
 package client.sample;
 
+import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.Button;
-import javafx.scene.control.PasswordField;
-import javafx.scene.control.TextArea;
-import javafx.scene.control.TextField;
+import javafx.geometry.Pos;
+import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -16,33 +16,36 @@ import java.net.Socket;
 import java.net.URL;
 import java.util.ResourceBundle;
 public class Controller {
+
+    @FXML
+    ScrollPane scrollPane;
+    @FXML
+    VBox vBoxChat;
+    @FXML
+    TextField textField;
+    @FXML
+    Button smButton;
+    @FXML
+    HBox bottomPanel;
+
+
+    @FXML
+    HBox upperPanel;
+    @FXML
+    TextField loginField;
+    @FXML
+    PasswordField passwordField;
     @FXML
     TextArea textArea;
 
-    @FXML
-    TextField textField;
-
-    @FXML
-    Button smButton;
 
     Socket socket;
     DataInputStream in;
     DataOutputStream out;
+    String nick;
 
     final String IP_ADRESS = "localhost";
     final int PORT = 8189;
-
-    @FXML
-    HBox bottomPanel;
-
-    @FXML
-    HBox upperPanel;
-
-    @FXML
-    TextField loginField;
-
-    @FXML
-    PasswordField passwordField;
 
     private boolean isAuthorized;
 
@@ -51,13 +54,28 @@ public class Controller {
         if (!isAuthorized) {
             upperPanel.setVisible(true);
             upperPanel.setManaged(true);
+            textArea.setVisible(true);
+            textArea.setManaged(true);
+            scrollPane.setVisible(false);
+            scrollPane.setManaged(false);
             bottomPanel.setVisible(false);
             bottomPanel.setManaged(false);
         } else {
             upperPanel.setVisible(false);
             upperPanel.setManaged(false);
+            textArea.setVisible(false);
+            textArea.setManaged(false);
+            scrollPane.setVisible(true);
+            scrollPane.setManaged(true);
             bottomPanel.setVisible(true);
             bottomPanel.setManaged(true);
+
+            Platform.runLater(new Runnable() {
+                @Override
+                public void run() {
+                    Main.getStage().setTitle("CHAT -> "+ nick);
+                }
+            });
         }
     }
 
@@ -74,6 +92,7 @@ public class Controller {
                         while (true){
                             String str = in.readUTF();
                             if (str.startsWith("/authok")) {
+                                nick = str.split(" ",2)[1];
                                 setAuthorized(true);
                                 break;
                             } else {
@@ -85,8 +104,14 @@ public class Controller {
                             String str = in.readUTF();
                             if (str.equalsIgnoreCase("/serverClosed")) {
                                 break;
+                            }else {
+                                Platform.runLater(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        addMessageOnBox(str + "\n");
+                                    }
+                                });
                             }
-                            textArea.appendText(str  + "\n");
                         }
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -127,5 +152,28 @@ public class Controller {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void addMessageOnBox(String str){
+        String[] msg = str.split(" ",2);
+
+        Label label;
+        VBox vBox = new VBox();
+
+        if (msg[0].equals(nick + ":")){
+            vBox.setAlignment(Pos.TOP_RIGHT);
+            label = new Label(msg[1]);
+        }else{
+            vBox.setAlignment(Pos.TOP_LEFT);
+            label = new Label(str);
+        }
+
+        vBox.getChildren().add(label);
+        vBoxChat.getChildren().add(vBox);
+        scrollPane.vvalueProperty().bind(vBoxChat.heightProperty());
+
+        textField.clear();
+        textField.requestFocus();
+
     }
 }

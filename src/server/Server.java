@@ -16,8 +16,6 @@ public class Server {
 
         try {
             AuthService.connect();
-//            String name = AuthService.getNickByLoginAndPass("login1","pass1");
-//            System.out.println(name);
             server = new ServerSocket(8189);
             System.out.println("Сервер запущен!");
             clients = new Vector<>();
@@ -52,30 +50,43 @@ public class Server {
         clients.remove(client);
     }
 
-    public void broadcastMsg(String msg) {
+    public void translateMsgUnicast(String msg) {
 
         ClientHandler destination = this.destinationPrivateMsg(msg);
         ClientHandler source = this.sourcePrivateMsg(msg);
 
         if (destination != null){
+            String[] msgForSend = msg.split(" ", 4);
 
-            String msgForSend = msg.substring(destination.getNick().length() + source.getNick().length() + 3);
+            if (msgForSend.length == 4){
+                if (!destination.checkBlackList(source.getNick())) {
+                    destination.sendMsg(source.getNick() + "> " + msgForSend[3]);
+                    source.sendMsg(source.getNick() + ": "+">" + destination.getNick() + "< " + msgForSend[3]);
+                }else{
+                    source.sendMsg(source.getNick() + ": "+">" + destination.getNick() + "< " + msgForSend[3]);
+                }
+            }
+        }
+    }
 
-            destination.sendMsg(source.getNick() + "> " + msgForSend);
-            source.sendMsg(">" + destination.getNick() + "<" + msgForSend);
-        }else {
+    public void translateMsgBroadcast(String msg){
+        {
+            ClientHandler source = this.sourcePrivateMsg(msg);
+
             for (ClientHandler o : clients) {
-                o.sendMsg(msg);
+                if ( !o.checkBlackList(source.getNick()) ) {
+                    o.sendMsg(msg);
+                }
             }
         }
     }
 
     private ClientHandler destinationPrivateMsg(String msg){
-        String[] tokens = msg.split(" ");
+        String[] tokens = msg.split(" ",4); // "srcUser: /w dstUser message"
 
-        if (tokens.length > 2) {
+        if (tokens.length > 3) {
             for (ClientHandler o : clients) {
-                if ( tokens[1].equals("/"+o.getNick() ) ){
+                if ( tokens[2].equals( o.getNick() ) ){
                     return o;
                 }
             }
